@@ -1,4 +1,4 @@
-# Sample Hardhat Project
+# 一个简单的通用薅羊毛合约
 
 This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
 
