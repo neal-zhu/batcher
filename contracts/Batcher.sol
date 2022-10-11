@@ -26,15 +26,13 @@ contract Proxy {
 
     // withdraw all tokens
     function withdraw(address token) public onlyOwner {
-        console.log("Withdraw token: %s", token);
-        return;
         uint256 balance = ERC20(token).balanceOf(address(this));
-        ERC20(token).transfer(owner, balance);
+        ERC20(token).transfer(tx.origin, balance);
     }
 
     // withdraw all ETH
     function withdrawETH() public onlyOwner {
-        payable(owner).transfer(address(this).balance);
+        payable(tx.origin).transfer(address(this).balance);
     }
 
     // execute encodeed transaction
@@ -62,7 +60,7 @@ contract Batcher {
         // create proxy contracts, we will not destroy them
         for (uint256 i = 0; i < _n; i++) {
             // create with salt
-            Proxy proxy = new Proxy{salt: bytes32(uint256(i))}(msg.sender);
+            Proxy proxy = new Proxy{salt: bytes32(uint256(i))}(address(this));
             // append to proxies
             proxies.push(proxy);
         }
@@ -88,11 +86,11 @@ contract Batcher {
     }
 
     fallback() external payable {
+        require(owner == msg.sender, "Only owner can call this function.");
         // delegatecall to proxy contracts
         for (uint256 i = 0; i < proxies.length; i++) {
             address proxy = address(proxies[i]);
-            console.log("delegatecall to proxy: %s", proxy);
-            (bool success, ) = proxy.delegatecall(msg.data);
+            (bool success, ) = proxy.call(msg.data);
             require(success, "Transaction failed.");
         }
     }

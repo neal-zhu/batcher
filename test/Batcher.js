@@ -1,6 +1,13 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const { time } = require("@nomicfoundation/hardhat-network-helpers");
+
+async function increaseTime(value) {
+  if (!ethers.BigNumber.isBigNumber(value)) {
+    value = ethers.BigNumber.from(value);
+  }
+  await ethers.provider.send('evm_increaseTime', [value.toNumber()]);
+  await ethers.provider.send('evm_mine');
+}
 
 describe("Batcher", function () {
   it("batcher xen", async function () {
@@ -12,22 +19,32 @@ describe("Batcher", function () {
     const xen = new hre.ethers.Contract(xenAddress, xenABI, signer);
     expect(await xen.balanceOf(signer.address)).to.equal(0);
 
-
     // deploy batcher
     const Batcher = await hre.ethers.getContractFactory("Batcher", signer);
     const batcher = await Batcher.deploy(10);
     await batcher.deployed();
-
-    // encode xen claimRank function call
-    let batcherABI = [
+    
+    const batcherABI = [
       "function execute(address, bytes) payable",
       "function withdraw(address)",
-    ];
-    let iface = new hre.ethers.utils.Interface(batcherABI);
-    iface.getSighash()
-    let executeFunctionCall = iface.encodeFunctionData("execute", [batcher.address, xen.encodeFunctionData("claimRank", [1])]);
-    await signer.sendTransaction({to: batcher.address,  data: executeFunctionCall});
+      "function withdrawETH(address)",
+      "function destroy()",
+    ]
+    const iface = new hre.ethers.utils.Interface(batcherABI);
 
+    // encode xen claimRank function call
+    let data = iface.encodeFunctionData("execute", [xen.address, xen.interface.encodeFunctionData("claimRank", [1])]);
+    let tx = await signer.sendTransaction({to: batcher.address,  data: data});
+    await tx.wait();
 
+    // increase and mine time so we can claimReward
+    await increaseTime(24*60*60);
+
+    data = iface.encodeFunctionData("execute", [xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [signer.address, 100])]);
+    tx = await signer.sendTransaction({to: batcher.address,  data: data});
+    await tx.wait();
+
+    expect(await xen.balanceOf(signer.address)).to.greaterThan(0);
+    console.log("XEN balance: ", (await xen.balanceOf(signer.address)).toString());
   });
 });
