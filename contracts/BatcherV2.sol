@@ -1,21 +1,6 @@
-/**
- *Submitted for verification at BscScan.com on 2022-10-12
-*/
-
-/**
- *Submitted for verification at BscScan.com on 2022-10-10
-*/
-
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 import "hardhat/console.sol";
-
-contract Test {
-	function test() public view {
-		console.log("Hello, world!", msg.sender);
-	}
-}
 
 contract BatcherV2 {
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1167.md

