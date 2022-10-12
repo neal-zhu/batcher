@@ -41,13 +41,47 @@ contract Proxy {
         payable
         onlyOwner
     {
-        (bool success, ) = target.call(data);
-        require(success, "Transaction failed.");
+        //(bool success, ) = target.call(data);
+        //require(success, "Transaction failed.");
+        _call(target, data);
     }
 
     // Destroys this contract instance
     function destroy(address payable recipient) public onlyOwner {
         selfdestruct(recipient);
+    }
+
+    function _call(address target, bytes memory data)
+        internal 
+        onlyOwner
+        returns (bytes memory)
+    {
+        // implementation with assembly
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            let succeeded := call(
+                gas(),
+                target,
+                callvalue(),
+                add(data, 0x20),
+                mload(data),
+                0,
+                0
+            )
+            let size := returndatasize()
+
+            let ptr := mload(0x40)
+            returndatacopy(ptr, 0, size)
+
+            switch iszero(succeeded)
+                case 1 {
+                    // throw if delegatecall failed
+                    revert(ptr, size)
+                }
+                default {
+                    return(ptr, size)
+                }
+        }
     }
 }
 
@@ -60,7 +94,7 @@ contract Batcher {
         // create proxy contracts, we will not destroy them
         for (uint256 i = 0; i < _n; i++) {
             // create with salt
-            Proxy proxy = new Proxy{salt: bytes32(uint256(i))}(address(this));
+            Proxy proxy = new Proxy{salt: bytes32(uint256(i))}((address(this)));
             // append to proxies
             proxies.push(proxy);
         }
@@ -68,7 +102,7 @@ contract Batcher {
 
     function getBytecode() public view returns (bytes memory) {
         bytes memory bytecode = type(Proxy).creationCode;
-        return abi.encodePacked(bytecode, abi.encode(msg.sender));
+        return abi.encodePacked(bytecode, abi.encode(address(this)));
     }
 
     function getAddress(uint256 _salt) public view returns (address) {
@@ -88,12 +122,42 @@ contract Batcher {
     fallback() external payable {
         require(owner == msg.sender, "Only owner can call this function.");
         // delegatecall to proxy contracts
-        for (uint256 i = 0; i < proxies.length; i++) {
+        uint length = proxies.length;
+        for (uint256 i = 0; i < length; i++) {
             address proxy = address(proxies[i]);
-            (bool success, ) = proxy.call(msg.data);
-            require(success, "Transaction failed.");
+            //(bool success, ) = proxy.call(msg.data);
+            //require(success, "Transaction failed.");
+            _call(proxy, msg.data);
         }
     }
 
     receive() external payable {}
+
+    function _call(address target, bytes memory data)
+        internal 
+    {
+        // implementation with assembly
+        // solhint-disable-next-line no-inline-assembly
+        assembly {
+            let succeeded := call(
+                gas(),
+                target,
+                callvalue(),
+                add(data, 0x20),
+                mload(data),
+                0,
+                0
+            )
+            let size := returndatasize()
+
+            let ptr := mload(0x40)
+            returndatacopy(ptr, 0, size)
+
+            switch iszero(succeeded)
+                case 1 {
+                    // throw if delegatecall failed
+                    revert(ptr, size)
+                }
+        }
+    }
 }
