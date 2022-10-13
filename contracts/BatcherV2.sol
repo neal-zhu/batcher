@@ -53,4 +53,19 @@ contract BatcherV2 {
             )))));
     }
 
+	// increase proxy count
+	function increase(uint _n) external {
+		require(msg.sender == deployer, "Only deployer can call this function.");
+		n += _n;
+		createProxies(_n);
+	}
+
+	function execute(uint _start, uint _count, address target, bytes memory data) external {
+		require(msg.sender == deployer, "Only deployer can call this function.");
+		for(uint i=_start; i<_start+_count; i++) {
+	        address proxy = proxyFor(msg.sender, i);
+			BatcherV2(proxy).callback(target, data);
+		}
+	}
+
 }
