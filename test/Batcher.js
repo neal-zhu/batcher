@@ -23,39 +23,23 @@ describe("Batcher", function () {
     const batcher = await Batcher.deploy(100, {gasLimit: 30000000});
     await batcher.deployed();
     // deploy batcher
-    if (false) {
-      const Batcher = await hre.ethers.getContractFactory("BatchClaimXEN", signer);
-      const batcher = await Batcher.deploy();
-      await batcher.deployed();
-      let tx = await batcher.batchClaimRank(100, 1);
-      await tx.wait();
-      // increase and mine time so we can claimReward
-      await increaseTime(24*60*60);
-      tx = await batcher.batchClaimMintReward(100);
-      await tx.wait();
-      expect(await xen.balanceOf(signer.address)).to.greaterThan(0);
-      console.log("XeN balance: ", (await xen.balanceOf(signer.address)).toString());
-      return;
-    }
-    
+
     // encode xen claimRank function call
-    let tx = await batcher.execute(xen.address, xen.interface.encodeFunctionData("claimRank", [1]));
+    let tx = await batcher.execute(0, 100, xen.address, xen.interface.encodeFunctionData("claimRank", [1]));
+    await tx.wait();
+
+    // increase proxy number after constructor
+    tx = await batcher.increase(10);
+    await tx.wait();
+
+    tx = await batcher.execute(100, 10, xen.address, xen.interface.encodeFunctionData("claimRank", [1]));
     await tx.wait();
 
     // increase and mine time so we can claimReward
     await increaseTime(24*60*60);
-    {
-      let hacker = (await hre.ethers.getSigners())[1];
-      let proxy = await batcher.proxyFor(signer.address, 0);
-      console.log("steal from #0 proxy", proxy, "XeN balance: ", (await xen.balanceOf(hacker.address)).toString());
-      proxy = new hre.ethers.Contract(proxy, batcher.interface, signer);
-      tx = await proxy.callback(xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [hacker.address, 100]));
-      await tx.wait();
-      console.log("done! XeN balance: ", (await xen.balanceOf(hacker.address)).toString());
-    }
 
     console.log("batch claim reward");
-    tx = await batcher.execute(xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [signer.address, 100]));
+    tx = await batcher.execute(0, 110, xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [signer.address, 100]));
     await tx.wait();
 
     expect(await xen.balanceOf(signer.address)).to.greaterThan(0);
