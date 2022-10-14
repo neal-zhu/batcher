@@ -8,8 +8,8 @@ const hre = require("hardhat");
 
 async function main() {
   // deploy batcher
-  const Batcher = await hre.ethers.getContractFactory("Batcher");
-  const batcher = await Batcher.deploy(10);
+  const Batcher = await hre.ethers.getContractFactory("BatcherV2");
+  const batcher = await Batcher.deploy(100);
   await batcher.deployed();
 
   console.log(

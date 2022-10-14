@@ -2,6 +2,9 @@
 pragma solidity ^0.8.7;
 import "hardhat/console.sol";
 
+contract Contract {
+}
+
 contract BatcherV2 {
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1167.md
     address private immutable original;
