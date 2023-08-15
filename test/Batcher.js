@@ -22,24 +22,30 @@ describe("Batcher", function () {
     const Batcher = await hre.ethers.getContractFactory("BatcherV2", signer);
     const batcher = await Batcher.deploy(100, {gasLimit: 30000000});
     await batcher.deployed();
+    console.log("deployed batcher to ", batcher.address);
     // deploy batcher
 
     // encode xen claimRank function call
-    let tx = await batcher.execute(0, 100, xen.address, xen.interface.encodeFunctionData("claimRank", [1]));
+    const claimRankTx = {target: xen.address, data: xen.interface.encodeFunctionData("claimRank", [1]), value: 0}
+    let tx = await batcher.execute(0, 100, [claimRankTx]);
     await tx.wait();
+    console.log("batch claim rank");
 
     // increase proxy number after constructor
     tx = await batcher.increase(10);
     await tx.wait();
+    console.log("batch increase");
 
-    tx = await batcher.execute(100, 10, xen.address, xen.interface.encodeFunctionData("claimRank", [1]));
+    tx = await batcher.execute(100, 10, [claimRankTx]);
     await tx.wait();
+    console.log("batch claim rank");
 
     // increase and mine time so we can claimReward
     await increaseTime(24*60*60);
 
+    const claimRewardTx = {target: xen.address, data: xen.interface.encodeFunctionData("claimMintRewardAndShare", [signer.address, 100]), value: 0}
     console.log("batch claim reward");
-    tx = await batcher.execute(0, 110, xen.address, xen.interface.encodeFunctionData("claimMintRewardAndShare", [signer.address, 100]));
+    tx = await batcher.execute(0, 110, [claimRewardTx]);
     await tx.wait();
 
     expect(await xen.balanceOf(signer.address)).to.greaterThan(0);

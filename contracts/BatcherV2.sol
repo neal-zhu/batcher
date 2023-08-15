@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
-import "hardhat/console.sol";
 
-contract Contract {
+struct TransactionData {
+	address target;
+	bytes data;
+	uint256 value;
 }
 
 contract BatcherV2 {
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1167.md
     address private immutable original;
-    bytes32 byteCode;
+    bytes32 private byteCode;
 	uint n;
 	address private immutable deployer;
 	
@@ -28,15 +30,15 @@ contract BatcherV2 {
 			assembly {
 	            proxy := create2(0, add(miniProxy, 32), mload(miniProxy), salt)
 			}
+			require(proxy != address(0), "Failed to deploy contract.");
 		}
 		// update n
 		n = oldN + _n;
 	} 
 
-	function callback(address target, bytes memory data) external {
+	function callback(TransactionData calldata txData) external {
 		require(msg.sender == original, "Only original can call this function.");
-		(bool success, ) = target.call(data);
-		require(success, "Transaction failed.");
+		(bool success, ) = txData.target.call{value: txData.value}(txData.data);
 	}
 
     function proxyFor(address sender, uint i) public view returns (address proxy) {
@@ -55,11 +57,15 @@ contract BatcherV2 {
 		createProxies(_n);
 	}
 
-	function execute(uint _start, uint _count, address target, bytes memory data) external {
+	function execute(uint _start, uint _count, TransactionData[] memory txs) external {
 		require(msg.sender == deployer, "Only deployer can call this function.");
-		for(uint i=_start; i<_start+_count; i++) {
-	        address proxy = proxyFor(msg.sender, i);
-			BatcherV2(proxy).callback(target, data);
+		uint _n = n;
+		for(uint i=_start; i<_start+_count && i < _n; i++) {
+			address proxy = proxyFor(msg.sender, i);
+			for (uint j=0; j<txs.length; j++) {
+				TransactionData memory txData = txs[j];
+				BatcherV2(proxy).callback(txData);
+			}
 		}
 	}
 
